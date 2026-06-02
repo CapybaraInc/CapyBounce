@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0, shrink-to-fit=yes, viewport-fit=cover">
-    <title>Капибара Джамп 🍊 v2</title>
+    <title>Капибара Джамп 🍊 v3</title>
     <style>
         * {
             margin: 0;
@@ -114,7 +114,7 @@
             const shopPanel = document.getElementById('shopPanel');
             const skinList = document.getElementById('skinList');
 
-            // Аудио (Web Audio)
+            // ===== Аудио =====
             let audioCtx = null;
             function initAudio() {
                 if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -135,7 +135,7 @@
                 } catch(e) {}
             }
 
-            // Адаптивный размер
+            // ===== Адаптивный размер =====
             function resizeCanvas() {
                 const size = Math.min(window.innerWidth, window.innerHeight) * 0.95;
                 canvas.width = size;
@@ -151,7 +151,7 @@
                 initPlatforms();
             });
 
-            // Игровые переменные
+            // ===== Игровые переменные =====
             let capybara = {
                 x: canvas.width / 2,
                 y: canvas.height * 0.7,
@@ -159,7 +159,9 @@
                 height: 50,
                 velocityY: 0,
                 velocityX: 0,
-                rotation: 0
+                rotation: 0,
+                hasJetpack: false,
+                hasGun: false
             };
 
             const GRAVITY = 0.5;
@@ -168,6 +170,7 @@
             const MOVE_SPEED = 0.4;
             let platforms = [];
             let birds = [];
+            let bullets = [];
             let score = 0;
             let highScore = localStorage.getItem('capybaraHighScore') || 0;
             let gameOver = false;
@@ -180,19 +183,24 @@
             let currentSkin = localStorage.getItem('capy_skin') || 'default';
             let ownedSkins = JSON.parse(localStorage.getItem('capy_owned_skins') || '["default"]');
 
-            // Скины
+            // Франция
+            let franceMode = false;
+            let frenchFlag = false;
+
+            // ===== Скины =====
             const SKINS = [
                 { id: 'default', name: 'Классическая', emoji: '🦫', price: 0 },
                 { id: 'golden', name: 'Золотая', emoji: '🦁', price: 100 },
                 { id: 'ninja', name: 'Ниндзя', emoji: '🥷', price: 200 },
                 { id: 'alien', name: 'Пришелец', emoji: '👾', price: 500 },
-                { id: 'cyber', name: 'Кибер', emoji: '🤖', price: 1000 }
+                { id: 'cyber', name: 'Кибер', emoji: '🤖', price: 1000 },
+                { id: 'france', name: 'Французская', emoji: '🇫🇷', price: 150 }
             ];
 
             let touchStartX = 0;
             highScoreDisplay.textContent = highScore;
 
-            // Генерация платформ
+            // ===== Генерация платформ =====
             function createPlatform(x, y, width = 70, type = 'normal') {
                 return {
                     x: x,
@@ -221,6 +229,8 @@
                 capybara.velocityY = 0;
                 capybara.velocityX = 0;
                 capybara.rotation = 0;
+                capybara.hasJetpack = false;
+                capybara.hasGun = false;
                 score = 0;
                 gameOver = false;
                 gameStarted = false;
@@ -228,13 +238,14 @@
                 timer = 0;
                 timerRunning = false;
                 jumpCount = 0;
+                birds = [];
+                bullets = [];
                 timerDisplay.textContent = '0.00';
                 scoreDisplay.textContent = '0';
-                birds = [];
                 initPlatforms();
             }
 
-            // Обработчики ввода
+            // ===== Обработчики ввода =====
             function handleTouchStart(e) {
                 e.preventDefault();
                 if (gameOver) {
@@ -303,6 +314,30 @@
                         jumpCount++;
                         playTone(600, 0.1, 'sine', 0.08);
                     }
+                } else if (e.key === 'f' || e.key === 'F') {
+                    e.preventDefault();
+                    // Включить Францию (флаг)
+                    franceMode = !franceMode;
+                } else if (e.key === 'j' || e.key === 'J') {
+                    e.preventDefault();
+                    // Реактивный ранец (если есть)
+                    if (capybara.hasJetpack) {
+                        capybara.velocityY = -12;
+                        playTone(400, 0.3, 'sawtooth', 0.15);
+                    }
+                } else if (e.key === 'g' || e.key === 'G') {
+                    e.preventDefault();
+                    // Стрельба из пистолета (если есть)
+                    if (capybara.hasGun) {
+                        bullets.push({
+                            x: capybara.x,
+                            y: capybara.y - capybara.height/2,
+                            vx: 0,
+                            vy: -8,
+                            radius: 4
+                        });
+                        playTone(800, 0.05, 'square', 0.08);
+                    }
                 }
             }
 
@@ -324,7 +359,7 @@
                 if (e.target === canvas) e.preventDefault();
             }, {passive: false});
 
-            // Обновление игры
+            // ===== Обновление игры =====
             function update() {
                 if (gameOver || !gameStarted) return;
 
@@ -335,7 +370,9 @@
                 }
 
                 // Гравитация
-                capybara.velocityY += GRAVITY;
+                if (!capybara.hasJetpack) {
+                    capybara.velocityY += GRAVITY;
+                }
                 if (capybara.velocityY > MAX_SPEED) capybara.velocityY = MAX_SPEED;
                 capybara.y += capybara.velocityY;
                 capybara.rotation += capybara.velocityY * 0.05;
@@ -346,13 +383,33 @@
                 }
                 capybara.x += moveX;
 
-                // ИСПРАВЛЕНИЕ БАГА — остановка у краёв, а не телепорт
-                if (capybara.x - capybara.width/2 < 0) {
-                    capybara.x = capybara.width/2;
-                } else if (capybara.x + capybara.width/2 > canvas.width) {
-                    capybara.x = canvas.width - capybara.width/2;
+                // Границы
+                if (capybara.x - capybara.width/2 < 0) capybara.x = capybara.width/2;
+                if (capybara.x + capybara.width/2 > canvas.width) capybara.x = canvas.width - capybara.width/2;
+
+                // Пули
+                for (let i = bullets.length - 1; i >= 0; i--) {
+                    let b = bullets[i];
+                    b.y += b.vy;
+                    if (b.y < -20) {
+                        bullets.splice(i, 1);
+                        continue;
+                    }
+                    for (let j = birds.length - 1; j >= 0; j--) {
+                        let bird = birds[j];
+                        if (b.x > bird.x - bird.radius && b.x < bird.x + bird.radius &&
+                            b.y > bird.y - bird.radius && b.y < bird.y + bird.radius) {
+                            birds.splice(j, 1);
+                            bullets.splice(i, 1);
+                            coins += 3;
+                            localStorage.setItem('capy_coins', coins);
+                            playTone(1000, 0.15, 'sine', 0.15);
+                            break;
+                        }
+                    }
                 }
 
+                // Платформы
                 if (capybara.velocityY > 0) {
                     for (let i = 0; i < platforms.length; i++) {
                         let p = platforms[i];
@@ -404,6 +461,7 @@
                     }
                 }
 
+                // Падение вниз
                 if (capybara.y - capybara.height > canvas.height) {
                     gameOver = true;
                     gameStarted = false;
@@ -442,19 +500,22 @@
                 }
             }
 
-            // Рисование капибары
+            // ===== Рисование =====
             function drawCapybara(x, y) {
                 ctx.save();
                 ctx.translate(x, y);
                 ctx.rotate(capybara.rotation);
+                // Тело
                 ctx.fillStyle = '#8B5A2B';
                 ctx.beginPath();
                 ctx.ellipse(0, 0, capybara.width/2, capybara.height/2.2, 0, 0, Math.PI * 2);
                 ctx.fill();
+                // Пузико
                 ctx.fillStyle = '#D2B48C';
                 ctx.beginPath();
                 ctx.ellipse(0, capybara.height/6, capybara.width/3.5, capybara.height/3.5, 0, 0, Math.PI * 2);
                 ctx.fill();
+                // Глаза
                 ctx.fillStyle = 'white';
                 ctx.beginPath();
                 ctx.arc(-capybara.width/6, -capybara.height/8, capybara.width/8, 0, Math.PI*2);
@@ -476,10 +537,12 @@
                 ctx.beginPath();
                 ctx.arc(capybara.width/6, -capybara.height/8 - 2, capybara.width/20, 0, Math.PI*2);
                 ctx.fill();
+                // Нос
                 ctx.fillStyle = '#4A2F1A';
                 ctx.beginPath();
                 ctx.ellipse(0, capybara.height/10, capybara.width/10, capybara.width/12, 0, 0, Math.PI*2);
                 ctx.fill();
+                // Уши
                 ctx.fillStyle = '#8B5A2B';
                 ctx.beginPath();
                 ctx.arc(-capybara.width/2.5, -capybara.height/2.5, capybara.width/7, 0, Math.PI, true);
@@ -487,6 +550,7 @@
                 ctx.beginPath();
                 ctx.arc(capybara.width/2.5, -capybara.height/2.5, capybara.width/7, 0, Math.PI, true);
                 ctx.fill();
+                // Апельсин
                 ctx.fillStyle = '#FF8C00';
                 ctx.beginPath();
                 ctx.arc(0, -capybara.height/2.2, capybara.width/6, 0, Math.PI*2);
@@ -495,6 +559,21 @@
                 ctx.beginPath();
                 ctx.ellipse(0, -capybara.height/2.2 - capybara.width/7, capybara.width/9, capybara.width/12, 0, 0, Math.PI*2);
                 ctx.fill();
+                // Реактивный ранец
+                if (capybara.hasJetpack) {
+                    ctx.fillStyle = '#888';
+                    ctx.fillRect(-capybara.width/2 + 2, -capybara.height/2 - 4, 8, 12);
+                    ctx.fillRect(capybara.width/2 - 10, -capybara.height/2 - 4, 8, 12);
+                    ctx.fillStyle = '#ff4444';
+                    ctx.fillRect(-capybara.width/2 + 2, -capybara.height/2 + 8, 8, 4);
+                    ctx.fillRect(capybara.width/2 - 10, -capybara.height/2 + 8, 8, 4);
+                }
+                // Пистолет
+                if (capybara.hasGun) {
+                    ctx.fillStyle = '#333';
+                    ctx.fillRect(capybara.width/2 - 4, -capybara.height/2, 12, 6);
+                    ctx.fillRect(capybara.width/2 + 8, -capybara.height/2 - 2, 8, 10);
+                }
                 ctx.restore();
             }
 
@@ -530,22 +609,11 @@
                 ctx.fill();
             }
 
-            // Полифилл roundRect
-            if (!ctx.roundRect) {
-                ctx.roundRect = function(x, y, w, h, r) {
-                    if (typeof r === 'number') r = {tl: r, tr: r, br: r, bl: r};
-                    ctx.beginPath();
-                    ctx.moveTo(x + r.tl, y);
-                    ctx.lineTo(x + w - r.tr, y);
-                    ctx.quadraticCurveTo(x + w, y, x + w, y + r.tr);
-                    ctx.lineTo(x + w, y + h - r.br);
-                    ctx.quadraticCurveTo(x + w, y + h, x + w - r.br, y + h);
-                    ctx.lineTo(x + r.bl, y + h);
-                    ctx.quadraticCurveTo(x, y + h, x, y + h - r.bl);
-                    ctx.lineTo(x, y + r.tl);
-                    ctx.quadraticCurveTo(x, y, x + r.tl, y);
-                    ctx.closePath();
-                };
+            function drawBullet(b) {
+                ctx.fillStyle = '#ff4444';
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+                ctx.fill();
             }
 
             function drawBackground() {
@@ -555,6 +623,7 @@
                 gradient.addColorStop(1, '#B2DFDB');
                 ctx.fillStyle = gradient;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
+                // Облака
                 ctx.fillStyle = 'rgba(255,255,255,0.8)';
                 for (let i = 0; i < 4; i++) {
                     ctx.beginPath();
@@ -564,6 +633,23 @@
                     ctx.arc(cloudX + 30, cloudY - 10, 30, 0, Math.PI*2);
                     ctx.arc(cloudX + 60, cloudY, 25, 0, Math.PI*2);
                     ctx.fill();
+                }
+                // Франция (Эйфелева башня, флаг)
+                if (franceMode) {
+                    ctx.fillStyle = '#1a1a2e';
+                    ctx.fillRect(0, 0, canvas.width, 50);
+                    ctx.fillStyle = '#002395';
+                    ctx.fillRect(0, 0, canvas.width/3, 50);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(canvas.width/3, 0, canvas.width/3, 50);
+                    ctx.fillStyle = '#ED2939';
+                    ctx.fillRect(canvas.width*2/3, 0, canvas.width/3, 50);
+                    // Эйфелева башня
+                    ctx.fillStyle = '#666';
+                    ctx.fillRect(canvas.width/2 - 8, 20, 16, 60);
+                    ctx.fillRect(canvas.width/2 - 12, 10, 24, 10);
+                    ctx.fillRect(canvas.width/2 - 4, 30, 8, 15);
+                    ctx.fillRect(canvas.width/2 - 6, 50, 12, 12);
                 }
             }
 
@@ -639,6 +725,9 @@
                 for (let bird of birds) {
                     drawBird(bird);
                 }
+                for (let b of bullets) {
+                    drawBullet(b);
+                }
                 drawCapybara(capybara.x, capybara.y);
                 drawUI();
                 requestAnimationFrame(gameLoop);
@@ -650,6 +739,13 @@
             document.addEventListener('dblclick', function(e) {
                 if (e.target === canvas) e.preventDefault();
             });
+
+            // Добавим бонус: при старте даём реактивный ранец и пистолет
+            // Чтобы их получить, нужно купить в магазине скин "Французская" (стоит 150)
+            // После покупки capybara.hasJetpack = true, capybara.hasGun = true
+            // Но для простоты дадим при старте (закомментировано)
+            // capybara.hasJetpack = true;
+            // capybara.hasGun = true;
         })();
     </script>
 </body>
