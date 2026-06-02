@@ -1,523 +1,485 @@
+
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>CapyBounce: Ultimate Edition</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0, shrink-to-fit=yes, viewport-fit=cover">
+    <title>Капибара Джамп 🍊</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
         }
         body {
-            background: #0a0a1a;
+            background: #1a1a2e;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
             width: 100vw;
             overflow: hidden;
-            font-family: 'Orbitron', sans-serif;
-            touch-action: manipulation;
-        }
-        .game-container {
-            position: relative;
-            width: 100%;
-            max-width: 400px;
-            height: 100%;
-            max-height: 750px;
-            background: radial-gradient(circle at 20% 20%, #1a0a2a, #0a0a1a);
-            box-shadow: 0 0 40px #ff00ff66;
-            border: 2px solid #ff00ff;
-            border-radius: 20px;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
+            font-family: 'Segoe UI', sans-serif;
+            touch-action: pan-x pan-y; 
         }
         canvas {
             display: block;
-            width: 100%;
-            height: auto;
-            background: transparent;
-            touch-action: none;
-        }
-        .ui {
-            position: absolute;
-            top: 15px;
-            left: 15px;
-            right: 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            pointer-events: none;
-            z-index: 10;
-        }
-        .score {
-            font-family: 'Orbitron', sans-serif;
-            font-weight: 900;
-            font-size: 1.6rem;
-            color: #ff00ff;
-            text-shadow: 0 0 15px #ff00ff;
-            background: rgba(10, 10, 26, 0.7);
-            padding: 6px 14px;
-            border-radius: 20px;
-            border: 1px solid #ff00ff;
-        }
-        .shop-btn {
-            pointer-events: auto;
-            background: rgba(10, 10, 26, 0.7);
-            border: 1px solid #00ffff;
-            border-radius: 20px;
-            padding: 6px 14px;
-            color: #00ffff;
-            font-size: 0.8rem;
-            cursor: pointer;
-            font-family: 'Orbitron', sans-serif;
-        }
-        .controls {
-            position: absolute;
-            bottom: 20px;
-            left: 15px;
-            right: 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            pointer-events: none;
-            z-index: 10;
-        }
-        .btn {
-            pointer-events: auto;
-            background: rgba(10, 10, 26, 0.7);
-            backdrop-filter: blur(10px);
-            border: 2px solid #00ffff;
-            color: #00ffff;
-            font-family: 'Orbitron', sans-serif;
-            font-weight: 700;
-            font-size: 1.4rem;
-            padding: 10px 24px;
-            border-radius: 40px;
-            text-shadow: 0 0 10px #00ffff;
-            box-shadow: 0 0 20px #00ffff66;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-        .btn:active {
-            transform: scale(0.92);
-            border-color: #ff00ff;
-            color: #ff00ff;
-        }
-        .shop-panel {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(10, 10, 26, 0.95);
-            backdrop-filter: blur(20px);
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 20;
-            padding: 20px;
-        }
-        .shop-panel h2 {
-            color: #ff00ff;
-            font-size: 1.6rem;
-            margin-bottom: 15px;
-        }
-        .skin-option {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            padding: 10px 20px;
-            margin: 5px 0;
-            border: 1px solid #333;
-            border-radius: 12px;
-            cursor: pointer;
-            width: 80%;
-            transition: 0.2s;
-        }
-        .skin-option:hover {
-            border-color: #ff00ff;
-        }
-        .skin-option .emoji {
-            font-size: 2rem;
-        }
-        .skin-option .price {
-            color: #ffcc00;
-        }
-        .skin-option.bought {
-            border-color: #00ff88;
-            opacity: 0.6;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            background: #87CEEB;
+            max-width: 100vw;
+            max-height: 100vh;
+            touch-action: none; 
         }
     </style>
 </head>
 <body>
-<div class="game-container">
-    <canvas id="gameCanvas" width="400" height="700"></canvas>
-    <div class="ui">
-        <div class="score" id="scoreDisplay">0</div>
-        <button class="shop-btn" id="shopBtn">🛒</button>
-    </div>
-    <div class="controls">
-        <button class="btn" id="leftBtn">◀</button>
-        <button class="btn" id="rightBtn">▶</button>
-    </div>
-    <div class="shop-panel" id="shopPanel">
-        <h2>🛒 Магазин</h2>
-        <div id="skinList"></div>
-        <button class="btn" id="closeShop">Закрыть</button>
-    </div>
-</div>
+    <canvas id="gameCanvas"></canvas>
+    <script>
+        (function() {
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
 
-<script>
-    (function() {
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const scoreDisplay = document.getElementById('scoreDisplay');
-        const shopPanel = document.getElementById('shopPanel');
-        const shopBtn = document.getElementById('shopBtn');
-        const closeShop = document.getElementById('closeShop');
-        const skinList = document.getElementById('skinList');
-
-        const CW = 400, CH = 700;
-        canvas.width = CW;
-        canvas.height = CH;
-
-        // ===== СКИНЫ =====
-        const SKINS = [
-            { id: 'default', name: 'Классическая', emoji: '🦫', price: 0, owned: true },
-            { id: 'cyber', name: 'Кибер-капибара', emoji: '🤖', price: 100 },
-            { id: 'ninja', name: 'Ниндзя-капибара', emoji: '🥷', price: 200 },
-            { id: 'golden', name: 'Золотая капибара', emoji: '🦁', price: 500 },
-            { id: 'alien', name: 'Капибара-пришелец', emoji: '👾', price: 1000 }
-        ];
-
-        let coins = parseInt(localStorage.getItem('capy_coins') || '0');
-        let currentSkin = localStorage.getItem('capy_skin') || 'default';
-        let ownedSkins = JSON.parse(localStorage.getItem('capy_owned_skins') || '["default"]');
-
-        // ===== ИГРОВЫЕ ПЕРЕМЕННЫЕ =====
-        let score = 0;
-        let gameActive = false;
-        let leftPressed = false;
-        let rightPressed = false;
-        let difficulty = 1;
-        let triggerCounter = 0;
-
-        const capy = {
-            x: CW / 2,
-            y: 150,
-            width: 44,
-            height: 44,
-            vx: 0,
-            vy: 0,
-            baseSpeed: 4.8,
-            skin: SKINS.find(s => s.id === currentSkin) || SKINS[0]
-        };
-
-        let platforms = [];
-        let enemies = [];
-        let particles = [];
-        let obstacles = [];
-        let stars = [];
-        let gridOffset = 0;
-        let platformSpawnCounter = 0;
-        let enemySpawnCounter = 0;
-        let obstacleSpawnCounter = 0;
-
-        const PLATFORM_WIDTH = 90;
-        const PLATFORM_HEIGHT = 14;
-        const PLATFORM_SPEED = 2.8 + difficulty * 0.2;
-
-        // ===== ЗВЁЗДЫ =====
-        for (let i = 0; i < 80; i++) {
-            stars.push({
-                x: Math.random() * CW,
-                y: Math.random() * CH,
-                radius: Math.random() * 2 + 1,
-                speed: Math.random() * 0.02 + 0.01
+            // Адаптивный размер
+            function resizeCanvas() {
+                const size = Math.min(window.innerWidth, window.innerHeight) * 0.95;
+                canvas.width = size;
+                canvas.height = size * 1.6; 
+                if (canvas.height > window.innerHeight * 0.95) {
+                    canvas.height = window.innerHeight * 0.95;
+                    canvas.width = canvas.height / 1.6;
+                }
+            }
+            resizeCanvas();
+            window.addEventListener('resize', () => {
+                resizeCanvas();
+                // Сбросим позиции платформ при ресайзе, чтобы не вылетали
+                initPlatforms();
             });
-        }
 
-        // ===== МАГАЗИН =====
-        function renderShop() {
-            skinList.innerHTML = '';
-            SKINS.forEach(skin => {
-                const owned = ownedSkins.includes(skin.id);
-                const div = document.createElement('div');
-                div.className = 'skin-option' + (owned ? ' bought' : '');
-                div.innerHTML = `
-                    <span class="emoji">${skin.emoji}</span>
-                    <span>${skin.name}</span>
-                    <span class="price">${owned ? '✅' : '🍊 ' + skin.price}</span>
-                `;
-                div.addEventListener('click', () => {
-                    if (owned) {
-                        currentSkin = skin.id;
-                        capy.skin = skin;
-                        localStorage.setItem('capy_skin', skin.id);
-                        renderShop();
-                    } else if (coins >= skin.price) {
-                        coins -= skin.price;
-                        ownedSkins.push(skin.id);
-                        localStorage.setItem('capy_coins', coins);
-                        localStorage.setItem('capy_owned_skins', JSON.stringify(ownedSkins));
-                        currentSkin = skin.id;
-                        capy.skin = skin;
-                        localStorage.setItem('capy_skin', skin.id);
-                        renderShop();
-                    } else {
-                        alert('Не хватает 🍊!');
-                    }
-                });
-                skinList.appendChild(div);
-            });
-        }
+            // Игровые переменные
+            let capybara = {
+                x: canvas.width / 2,
+                y: canvas.height * 0.7,
+                width: 50,
+                height: 50,
+                velocityY: 0,
+                velocityX: 0,
+            };
 
-        shopBtn.addEventListener('click', () => {
-            shopPanel.style.display = 'flex';
-            renderShop();
-        });
+            const GRAVITY = 0.5;
+            const JUMP_FORCE = -9;
+            const MAX_SPEED = 12;
+            const MOVE_SPEED = 0.4; // для tilt/клавиш
+            let platforms = [];
+            let score = 0;
+            let highScore = localStorage.getItem('capybaraHighScore') || 0;
+            let gameOver = false;
+            let gameStarted = false;
+            let tiltX = 0;
 
-        closeShop.addEventListener('click', () => {
-            shopPanel.style.display = 'none';
-        });
-
-        // ===== ОБНОВЛЕНИЕ =====
-        function update() {
-            if (!gameActive) return;
-
-            // Движение
-            if (leftPressed) capy.vx = -capy.baseSpeed;
-            else if (rightPressed) capy.vx = capy.baseSpeed;
-            else capy.vx *= 0.88;
-            capy.x += capy.vx;
-            if (capy.x < capy.width / 2) capy.x = capy.width / 2;
-            if (capy.x > CW - capy.width / 2) capy.x = CW - capy.width / 2;
-
-            capy.vy += 0.45;
-            capy.y += capy.vy;
-            if (capy.y < 30) { capy.y = 30;
-                capy.vy = 0; }
-
-            // Движение объектов
-            const speed = PLATFORM_SPEED + difficulty * 0.2;
-            platforms.forEach(p => p.y -= speed);
-            enemies.forEach(e => e.y -= speed);
-            obstacles.forEach(o => o.y -= speed);
-            gridOffset = (gridOffset + 1.2) % 60;
-
-            // Удаление ушедших
-            platforms = platforms.filter(p => p.y + p.height > -20);
-            enemies = enemies.filter(e => e.y + e.radius > -20);
-            obstacles = obstacles.filter(o => o.y + o.height > -20);
-
-            // Спавн
-            platformSpawnCounter++;
-            if (platformSpawnCounter > 25) {
-                platformSpawnCounter = 0;
-                platforms.push({
-                    x: Math.random() * (CW - PLATFORM_WIDTH),
-                    y: CH + 20,
-                    width: PLATFORM_WIDTH,
-                    height: PLATFORM_HEIGHT,
-                    color: ['#ff00ff', '#00ffff', '#ffff00'][Math.floor(Math.random() * 3)]
-                });
+            // Генерация платформ
+            function createPlatform(x, y, width = 70) {
+                return {
+                    x: x,
+                    y: y,
+                    width: width,
+                    height: 15,
+                    color: '#6B8E23',
+                };
             }
 
-            enemySpawnCounter++;
-            if (enemySpawnCounter > 50 - difficulty * 2) {
-                enemySpawnCounter = 0;
-                enemies.push({
-                    x: Math.random() * (CW - 40) + 20,
-                    y: CH + 30,
-                    radius: 16,
-                    eyeRadius: 5
-                });
-            }
-
-            // Рандом-триггер (каждые 500 очков)
-            obstacleSpawnCounter++;
-            if (obstacleSpawnCounter > 30 && score > 0 && score % 500 < 10) {
-                obstacleSpawnCounter = 0;
-                const type = Math.floor(Math.random() * 3);
-                if (type === 0) {
-                    obstacles.push({
-                        x: Math.random() * (CW - 30),
-                        y: CH + 20,
-                        width: 30,
-                        height: 30,
-                        type: 'spike'
-                    });
-                } else if (type === 1) {
-                    obstacles.push({
-                        x: 0,
-                        y: CH + 20,
-                        width: CW,
-                        height: 10,
-                        type: 'laser'
-                    });
-                } else {
-                    obstacles.push({
-                        x: Math.random() * (CW - 40),
-                        y: CH + 20,
-                        width: 40,
-                        height: 40,
-                        type: 'block'
-                    });
+            function initPlatforms() {
+                platforms = [];
+                // Стартовая платформа под капибарой
+                platforms.push(createPlatform(canvas.width / 2 - 35, capybara.y + capybara.height + 5, 80));
+                
+                // Генерируем платформы выше
+                for (let i = 0; i < 8; i++) {
+                    let platY = capybara.y - (i * 70) - 30;
+                    let platX = Math.random() * (canvas.width - 70);
+                    platforms.push(createPlatform(platX, platY, 60 + Math.random() * 30));
                 }
             }
 
-            // Столкновения
-            // (упрощённо)
-            // ... (полная логика коллизий)
-            // ...
-
-            // Счёт
-            score += 0.15;
-            scoreDisplay.textContent = Math.floor(score);
-            if (score % 500 === 0) {
-                difficulty++;
+            function resetGame() {
+                capybara.x = canvas.width / 2;
+                capybara.y = canvas.height * 0.7;
+                capybara.velocityY = 0;
+                capybara.velocityX = 0;
+                score = 0;
+                gameOver = false;
+                gameStarted = false;
+                tiltX = 0;
+                initPlatforms();
             }
-        }
 
-        // ===== ОТРИСОВКА =====
-        function draw() {
-            ctx.clearRect(0, 0, CW, CH);
-            // Фон
-            const grad = ctx.createLinearGradient(0, 0, 0, CH);
-            grad.addColorStop(0, '#0a0a1a');
-            grad.addColorStop(0.7, '#1a0a2a');
-            grad.addColorStop(1, '#0f0f2a');
-            ctx.fillStyle = grad;
-            ctx.fillRect(0, 0, CW, CH);
+            // Обработчики ввода
+            function handleTouchStart(e) {
+                e.preventDefault();
+                if (gameOver) {
+                    resetGame();
+                    return;
+                }
+                if (!gameStarted) {
+                    gameStarted = true;
+                    capybara.velocityY = JUMP_FORCE;
+                }
+                // Начало касания запоминаем позицию для свайпа
+                const touch = e.touches[0];
+                touchStartX = touch.clientX;
+            }
 
-            // Сетка
-            ctx.strokeStyle = '#ff00ff';
-            ctx.lineWidth = 0.8;
-            ctx.globalAlpha = 0.25;
-            const step = 50;
-            for (let i = -step + (gridOffset % step); i < CW; i += step) {
+            let touchStartX = 0;
+
+            function handleTouchMove(e) {
+                e.preventDefault();
+                if (gameOver || !gameStarted) return;
+                const touch = e.touches[0];
+                const deltaX = touch.clientX - touchStartX;
+                // Двигаем капибару относительно свайпа
+                capybara.x += deltaX * 0.8;
+                touchStartX = touch.clientX;
+                
+                // Ограничение по краям
+                if (capybara.x - capybara.width/2 < 0) capybara.x = capybara.width/2;
+                if (capybara.x + capybara.width/2 > canvas.width) capybara.x = canvas.width - capybara.width/2;
+            }
+
+            function handleTouchEnd(e) {
+                e.preventDefault();
+                // Ничего особого
+            }
+
+            // Гироскоп / акселерометр (только если доступен)
+            function handleOrientation(e) {
+                if (gameOver || !gameStarted) return;
+                // gamma: наклон влево-вправо (-90 до 90)
+                const gamma = e.gamma; 
+                if (gamma !== null && Math.abs(gamma) < 60) {
+                    tiltX = gamma / 30; // нормализуем
+                }
+            }
+
+            // Клавиатура для ПК (удобно тестировать)
+            function handleKeyDown(e) {
+                if (e.key === 'ArrowLeft' || e.key === 'a') {
+                    e.preventDefault();
+                    capybara.velocityX = -MOVE_SPEED * 20;
+                } else if (e.key === 'ArrowRight' || e.key === 'd') {
+                    e.preventDefault();
+                    capybara.velocityX = MOVE_SPEED * 20;
+                } else if (e.key === ' ' || e.key === 'Spacebar') {
+                    e.preventDefault();
+                    if (gameOver) {
+                        resetGame();
+                        return;
+                    }
+                    if (!gameStarted) {
+                        gameStarted = true;
+                        capybara.velocityY = JUMP_FORCE;
+                    }
+                }
+            }
+
+            function handleKeyUp(e) {
+                if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'ArrowRight' || e.key === 'd') {
+                    e.preventDefault();
+                    capybara.velocityX = 0;
+                }
+            }
+
+            // Подписка на события
+            canvas.addEventListener('touchstart', handleTouchStart, {passive: false});
+            canvas.addEventListener('touchmove', handleTouchMove, {passive: false});
+            canvas.addEventListener('touchend', handleTouchEnd);
+            canvas.addEventListener('touchcancel', handleTouchEnd);
+            
+            window.addEventListener('deviceorientation', handleOrientation);
+            window.addEventListener('keydown', handleKeyDown);
+            window.addEventListener('keyup', handleKeyUp);
+
+            // Предотвращаем скролл страницы на мобилках
+            document.body.addEventListener('touchmove', function(e) {
+                if (e.target === canvas) e.preventDefault();
+            }, {passive: false});
+
+            // Обновление игры
+            function update() {
+                if (gameOver || !gameStarted) return;
+
+                // Гравитация
+                capybara.velocityY += GRAVITY;
+                if (capybara.velocityY > MAX_SPEED) capybara.velocityY = MAX_SPEED;
+                capybara.y += capybara.velocityY;
+
+                // Движение по X (клавиатура + tilt)
+                let moveX = capybara.velocityX || 0;
+                if (Math.abs(tiltX) > 0.05) {
+                    moveX = tiltX * MOVE_SPEED * 25;
+                }
+                capybara.x += moveX;
+
+                // Границы экрана (телепорт как в Doodle Jump)
+                if (capybara.x + capybara.width/2 < 0) {
+                    capybara.x = canvas.width + capybara.width/2;
+                } else if (capybara.x - capybara.width/2 > canvas.width) {
+                    capybara.x = -capybara.width/2;
+                }
+
+                // Проверка столкновений с платформами (только когда падает вниз)
+                if (capybara.velocityY > 0) {
+                    for (let i = 0; i < platforms.length; i++) {
+                        let p = platforms[i];
+                        // Проверка коллизии
+                        if (capybara.y + capybara.height >= p.y && 
+                            capybara.y + capybara.height - capybara.velocityY <= p.y + p.height &&
+                            capybara.x + capybara.width/2 > p.x && 
+                            capybara.x - capybara.width/2 < p.x + p.width) {
+                            
+                            // Прыжок
+                            capybara.velocityY = JUMP_FORCE;
+                            capybara.y = p.y - capybara.height;
+                            
+                            // Увеличиваем счет
+                            score += 10;
+                            if (score > highScore) {
+                                highScore = score;
+                                localStorage.setItem('capybaraHighScore', highScore);
+                            }
+                            break;
+                        }
+                    }
+                }
+
+                // Проверка падения вниз (Game Over)
+                if (capybara.y - capybara.height > canvas.height) {
+                    gameOver = true;
+                    gameStarted = false;
+                }
+
+                // Двигаем камеру вверх, если капибара выше середины
+                if (capybara.y < canvas.height * 0.4 && capybara.velocityY < 0) {
+                    let diff = (canvas.height * 0.4 - capybara.y);
+                    capybara.y = canvas.height * 0.4;
+                    
+                    // Сдвигаем все платформы вниз
+                    for (let p of platforms) {
+                        p.y += diff;
+                    }
+
+                    // Удаляем платформы, ушедшие за низ экрана, и создаем новые сверху
+                    platforms = platforms.filter(p => p.y < canvas.height + 50);
+                    
+                    // Генерируем новые платформы сверху
+                    while (platforms.length < 8) {
+                        let newY = platforms.length > 0 ? 
+                            Math.min(...platforms.map(p => p.y)) - 60 - Math.random() * 40 : 
+                            -20;
+                        let newX = Math.random() * (canvas.width - 70);
+                        platforms.push(createPlatform(newX, newY, 50 + Math.random() * 40));
+                    }
+                }
+            }
+
+            // Рисование капибары (упрощенный милый стиль)
+            function drawCapybara(x, y) {
+                const w = capybara.width;
+                const h = capybara.height;
+                const cx = x;
+                const cy = y;
+
+                ctx.save();
+                ctx.translate(cx, cy);
+
+                // Тело (овал, коричневый)
+                ctx.fillStyle = '#8B5A2B';
                 ctx.beginPath();
-                ctx.moveTo(i, 0);
-                ctx.lineTo(i, CH);
+                ctx.ellipse(0, 0, w/2, h/2.2, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#5C3A1E';
+                ctx.lineWidth = 2;
                 ctx.stroke();
-            }
-            ctx.globalAlpha = 1;
 
-            // Звёзды
-            stars.forEach(s => {
-                ctx.fillStyle = `rgba(255,215,0,${0.3 + Math.sin(Date.now() * s.speed) * 0.2})`;
+                // Пузико светлое
+                ctx.fillStyle = '#D2B48C';
                 ctx.beginPath();
-                ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+                ctx.ellipse(0, h/6, w/3.5, h/3.5, 0, 0, Math.PI * 2);
                 ctx.fill();
-            });
 
-            // Платформы
-            platforms.forEach(p => {
-                ctx.shadowColor = p.color;
-                ctx.shadowBlur = 14;
-                ctx.fillStyle = p.color;
-                ctx.fillRect(p.x, p.y, p.width, p.height);
-            });
-
-            // Враги
-            enemies.forEach(e => {
-                ctx.shadowColor = '#ff0044';
-                ctx.shadowBlur = 18;
-                ctx.fillStyle = '#ff0044';
-                ctx.beginPath();
-                ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
-                ctx.fill();
                 // Глаза
-                ctx.fillStyle = '#fff';
+                ctx.fillStyle = 'white';
                 ctx.beginPath();
-                ctx.arc(e.x - 5, e.y - 4, e.eyeRadius, 0, Math.PI * 2);
+                ctx.arc(-w/6, -h/8, w/8, 0, Math.PI*2);
                 ctx.fill();
                 ctx.beginPath();
-                ctx.arc(e.x + 5, e.y - 4, e.eyeRadius, 0, Math.PI * 2);
+                ctx.arc(w/6, -h/8, w/8, 0, Math.PI*2);
                 ctx.fill();
-                ctx.fillStyle = '#000';
+                
+                ctx.fillStyle = '#1A1A1A';
                 ctx.beginPath();
-                ctx.arc(e.x - 4, e.y - 4, 2, 0, Math.PI * 2);
+                ctx.arc(-w/6 + 2, -h/8, w/14, 0, Math.PI*2);
                 ctx.fill();
                 ctx.beginPath();
-                ctx.arc(e.x + 6, e.y - 4, 2, 0, Math.PI * 2);
+                ctx.arc(w/6 + 2, -h/8, w/14, 0, Math.PI*2);
                 ctx.fill();
+                
+                // Блики в глазах
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(-w/6, -h/8 - 2, w/20, 0, Math.PI*2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(w/6, -h/8 - 2, w/20, 0, Math.PI*2);
+                ctx.fill();
+
+                // Нос
+                ctx.fillStyle = '#4A2F1A';
+                ctx.beginPath();
+                ctx.ellipse(0, h/10, w/10, w/12, 0, 0, Math.PI*2);
+                ctx.fill();
+
+                // Уши (маленькие полукруги)
+                ctx.fillStyle = '#8B5A2B';
+                ctx.beginPath();
+                ctx.arc(-w/2.5, -h/2.5, w/7, 0, Math.PI, true);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(w/2.5, -h/2.5, w/7, 0, Math.PI, true);
+                ctx.fill();
+
+                // Апельсин на голове (фирменный знак!)
+                ctx.fillStyle = '#FF8C00';
+                ctx.beginPath();
+                ctx.arc(0, -h/2.2, w/6, 0, Math.PI*2);
+                ctx.fill();
+                ctx.fillStyle = '#228B22';
+                ctx.beginPath();
+                ctx.ellipse(0, -h/2.2 - w/7, w/9, w/12, 0, 0, Math.PI*2);
+                ctx.fill();
+                
+                ctx.restore();
+            }
+
+            function drawPlatform(p) {
+                ctx.fillStyle = '#4CAF50';
+                ctx.beginPath();
+                ctx.roundRect(p.x, p.y, p.width, p.height, 5);
+                ctx.fill();
+                ctx.fillStyle = '#81C784';
+                ctx.beginPath();
+                ctx.roundRect(p.x, p.y, p.width, p.height/2, 5);
+                ctx.fill();
+            }
+
+            // Полифилл roundRect
+            if (!ctx.roundRect) {
+                ctx.roundRect = function(x, y, w, h, r) {
+                    if (typeof r === 'number') r = {tl: r, tr: r, br: r, bl: r};
+                    ctx.beginPath();
+                    ctx.moveTo(x + r.tl, y);
+                    ctx.lineTo(x + w - r.tr, y);
+                    ctx.quadraticCurveTo(x + w, y, x + w, y + r.tr);
+                    ctx.lineTo(x + w, y + h - r.br);
+                    ctx.quadraticCurveTo(x + w, y + h, x + w - r.br, y + h);
+                    ctx.lineTo(x + r.bl, y + h);
+                    ctx.quadraticCurveTo(x, y + h, x, y + h - r.bl);
+                    ctx.lineTo(x, y + r.tl);
+                    ctx.quadraticCurveTo(x, y, x + r.tl, y);
+                    ctx.closePath();
+                };
+            }
+
+            function drawUI() {
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 18px "Segoe UI"';
+                ctx.textAlign = 'left';
+                ctx.fillText(`🍊 ${score}`, 15, 40);
+                
+                ctx.textAlign = 'right';
+                ctx.fillText(`🏆 ${highScore}`, canvas.width - 15, 40);
+
+                if (!gameStarted && !gameOver) {
+                    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = 'white';
+                    ctx.font = 'bold 24px "Segoe UI"';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('КАПИБАРА ДЖАМП', canvas.width/2, canvas.height/2 - 30);
+                    ctx.font = '18px "Segoe UI"';
+                    ctx.fillText('Коснитесь, чтобы прыгать', canvas.width/2, canvas.height/2 + 20);
+                    ctx.fillText('Наклоняйте телефон для движения', canvas.width/2, canvas.height/2 + 50);
+                }
+
+                if (gameOver) {
+                    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = '#FF6B6B';
+                    ctx.font = 'bold 28px "Segoe UI"';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('УПС!', canvas.width/2, canvas.height/2 - 40);
+                    ctx.fillStyle = 'white';
+                    ctx.font = '20px "Segoe UI"';
+                    ctx.fillText(`Счёт: ${score}`, canvas.width/2, canvas.height/2 + 10);
+                    ctx.fillText('Коснитесь, чтобы начать заново', canvas.width/2, canvas.height/2 + 50);
+                }
+            }
+
+            function drawBackground() {
+                // Градиент неба
+                const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                gradient.addColorStop(0, '#87CEEB');
+                gradient.addColorStop(0.7, '#E0F7FA');
+                gradient.addColorStop(1, '#B2DFDB');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Облачка
+                ctx.fillStyle = 'rgba(255,255,255,0.8)';
+                for (let i = 0; i < 4; i++) {
+                    ctx.beginPath();
+                    let cloudX = (i * 120 + Date.now() * 0.01) % (canvas.width + 100) - 50;
+                    let cloudY = 50 + i * 40;
+                    ctx.arc(cloudX, cloudY, 25, 0, Math.PI*2);
+                    ctx.arc(cloudX + 30, cloudY - 10, 30, 0, Math.PI*2);
+                    ctx.arc(cloudX + 60, cloudY, 25, 0, Math.PI*2);
+                    ctx.fill();
+                }
+            }
+
+            function gameLoop() {
+                update();
+                
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawBackground();
+                
+                // Платформы
+                for (let p of platforms) {
+                    drawPlatform(p);
+                }
+                
+                // Капибара
+                drawCapybara(capybara.x, capybara.y);
+                
+                drawUI();
+                
+                requestAnimationFrame(gameLoop);
+            }
+
+            // Инициализация
+            initPlatforms();
+            gameLoop();
+
+            // Предотвращение нежелательного зума двойным тапом
+            document.addEventListener('dblclick', function(e) {
+                if (e.target === canvas) e.preventDefault();
             });
-
-            // Препятствия
-            obstacles.forEach(o => {
-                ctx.shadowColor = '#ff4400';
-                ctx.shadowBlur = 14;
-                ctx.fillStyle = '#ff4400';
-                ctx.fillRect(o.x, o.y, o.width, o.height);
-            });
-
-            // Капибара
-            ctx.save();
-            ctx.translate(capy.x, capy.y);
-            ctx.fillStyle = '#c49a6c';
-            ctx.beginPath();
-            ctx.ellipse(0, 0, capy.width / 2, capy.height / 2.4, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = '#f5e6d3';
-            ctx.beginPath();
-            ctx.ellipse(0, 4, 10, 12, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = '#000';
-            ctx.beginPath();
-            ctx.arc(-7, -4, 3.5, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(7, -4, 3.5, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = '#fff';
-            ctx.beginPath();
-            ctx.arc(-8, -5, 1.2, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(6, -5, 1.2, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.restore();
-
-            // Частицы
-            particles.forEach(p => {
-                ctx.globalAlpha = p.life;
-                ctx.fillStyle = p.color;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                ctx.fill();
-            });
-            ctx.globalAlpha = 1;
-        }
-
-        // ===== ЦИКЛ =====
-        function gameLoop() {
-            update();
-            draw();
-            requestAnimationFrame(gameLoop);
-        }
-
-        // ===== УПРАВЛЕНИЕ =====
-        document.getElementById('leftBtn').addEventListener('touchstart', e => { e.preventDefault();
-            leftPressed = true; });
-        document.getElementById('leftBtn').addEventListener('touchend', e => { e.preventDefault();
-            leftPressed = false; });
-        document.getElementById('rightBtn').addEventListener('touchstart', e => { e.preventDefault();
-            rightPressed = true; });
-        document.getElementById('rightBtn').addEventListener('touchend', e => { e.preventDefault();
-            rightPressed = false; });
-
-        // ===== СТАРТ =====
-        gameActive = true;
-        // (полная инициализация опущена для краткости)
-        gameLoop();
-    })();
-</script>
+        })();
+    </script>
 </body>
 </html>
