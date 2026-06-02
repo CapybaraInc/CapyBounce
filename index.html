@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>CapyBounce · Уровни</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        body {
+            background: #0a0a0a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', monospace;
+        }
+        .game-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            aspect-ratio: 9 / 16;
+            background: #000;
+            border-radius: 2rem;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,255,200,0.3);
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background: black;
+        }
+        .ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 1.2rem 0.8rem;
+        }
+        .score-panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #f0f0ff;
+            font-weight: bold;
+            font-size: 1.2rem;
+            text-shadow: 0 0 10px #00ffc3;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
+            padding: 0.6rem 1.2rem;
+            border-radius: 3rem;
+            border: 1px solid rgba(0,255,200,0.6);
+        }
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            pointer-events: auto;
+        }
+        .btn {
+            background: rgba(20, 20, 30, 0.8);
+            backdrop-filter: blur(15px);
+            border: 2px solid #00ffc3;
+            color: #fff;
+            font-size: 2.2rem;
+            font-weight: bold;
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 25px rgba(0,255,180,0.5);
+            cursor: pointer;
+            background: radial-gradient(circle at 30% 30%, rgba(0,255,200,0.4), #0a0a1a);
+        }
+        .btn:active {
+            transform: scale(0.85);
+            background: #00ffc3;
+            color: black;
+        }
+        .message {
+            color: white;
+            text-align: center;
+            font-size: 1rem;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(10px);
+            padding: 0.4rem 1.2rem;
+            border-radius: 2rem;
+            border: 1px solid magenta;
+            color: #ffb3ff;
+            text-shadow: 0 0 8px magenta;
+        }
+        .hidden { opacity: 0; transition: 0.2s; }
+    </style>
+</head>
+<body>
+<div class="game-container">
+    <canvas id="gameCanvas" width="360" height="640"></canvas>
+    <div class="ui-overlay">
+        <div class="score-panel" id="scoreDisplay">💫 0</div>
+        <div style="display: flex; flex-direction: column; align-items: center; width: 100%; gap: 8px;">
+            <div class="message" id="messageBox">🎵 в ритм!</div>
+            <div class="controls">
+                <button class="btn" id="leftBtn">◀</button>
+                <button class="btn" id="rightBtn">▶</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreSpan = document.getElementById('scoreDisplay');
+        const messageBox = document.getElementById('messageBox');
+
+        const W = 360, H = 640;
+
+        // === УРОВНИ (настраиваемые параметры) ===
+        const LEVELS = [
+            { name: 'Трава', speed: 3.8, gravity: 0.45, enemyCount: 2, spawnRate: 80 },
+            { name: 'Песок', speed: 4.2, gravity: 0.50, enemyCount: 3, spawnRate: 70 },
+            { name: 'Вода', speed: 4.8, gravity: 0.55, enemyCount: 4, spawnRate: 60 },
+            { name: 'Неон', speed: 5.5, gravity: 0.60, enemyCount: 5, spawnRate: 50 },
+            { name: 'Космос', speed: 6.2, gravity: 0.65, enemyCount: 6, spawnRate: 40 },
+        ];
+        let currentLevel = 0;
+
+        let gameActive = true;
+        let score = 0;
+
+        const capy = {
+            x: W/2, y: H - 130, radius: 18, vx: 0, vy: 0,
+            speed: 3.8, jumpPower: -6.2, gravity: 0.45, onGround: false,
+        };
+
+        let platforms = [];
+        let enemies = [];
+        const PLATFORM_WIDTH = 70;
+        const PLATFORM_HEIGHT = 8;
+        const MIN_PLATFORM_Y = 100;
+
+        // Музыка / ритм
+        let frameCounter = 0;
+        const BEAT_INTERVAL = 42;
+        let beatActive = false;
+        let audioCtx = null;
+
+        function initAudio() {
+            if (audioCtx) return;
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            } catch(e) {}
+        }
+
+        function playTick() {
+            if (!audioCtx) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.value = 880;
+            gain.gain.setValueAtTime(0.03, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(audioCtx.currentTime);
+            osc.stop(audioCtx.currentTime + 0.08);
+        }
+
+        // === ЗАГРУЗКА УРОВНЯ ===
+        function loadLevel(levelIndex) {
+            const level = LEVELS[levelIndex];
+            capy.speed = level.speed;
+            capy.gravity = level.gravity;
+            messageBox.textContent = `🌍 Уровень ${levelIndex+1}: ${level.name}`;
+            // сброс
+            gameActive = true;
+            score = 0;
+            capy.x = W/2;
+            capy.y = H - 130;
+            capy.vy = 0;
+            capy.vx = 0;
+            enemies = [];
+            generateInitialPlatforms();
+            updateScore();
+            setTimeout(() => {
+                messageBox.textContent = '🎵 в ритм!';
+            }, 1500);
+        }
+
+        function nextLevel() {
+            if (currentLevel < LEVELS.length - 1) {
+                currentLevel++;
+                loadLevel(currentLevel);
+            } else {
+                messageBox.textContent = '🏆 Ты прошёл все уровни!';
+                gameActive = false;
+            }
+        }
+
+        // === ПЛАТФОРМЫ ===
+        function spawnPlatform(y) {
+            let x = Math.random() * (W - PLATFORM_WIDTH);
+            x = Math.max(10, Math.min(x, W - PLATFORM_WIDTH - 10));
+            return {
+                x, y,
+                width: PLATFORM_WIDTH,
+                height: PLATFORM_HEIGHT,
+                color: `hsl(${Math.random()*60+140}, 90%, 70%)`
+            };
+        }
+
+        function generateInitialPlatforms() {
+            platforms = [];
+            platforms.push({
+                x: W/2 - PLATFORM_WIDTH/2,
+                y: H - 110,
+                width: PLATFORM_WIDTH,
+                height: PLATFORM_HEIGHT,
+                color: '#00ffc3'
+            });
+            for (let i = 1; i < 10; i++) {
+                let y = H - 130 - i * 70;
+                if (y < MIN_PLATFORM_Y) break;
+                platforms.push(spawnPlatform(y));
+            }
+        }
+
+        function addNewPlatformAbove() {
+            let minY = Math.min(...platforms.map(p => p.y));
+            if (minY > MIN_PLATFORM_Y + 30) {
+                let newY = minY - 60 - Math.random() * 25;
+                if (newY < MIN_PLATFORM_Y) newY = MIN_PLATFORM_Y;
+                platforms.push(spawnPlatform(newY));
+            }
+        }
+
+        function removeLowestPlatforms() {
+            platforms = platforms.filter(p => p.y < H + 50);
+        }
+
+        // === ВРАГИ ===
+        function spawnEnemy() {
+            let y = Math.random() * (H - 200) + 80;
+            let x = Math.random() > 0.5 ? -20 : W + 20;
+            let dir = x < 0 ? 1 : -1;
+            return {
+                x, y,
+                radius: 14,
+                vx: dir * (1.8 + Math.random() * 2.5),
+                vy: 0,
+                color: '#ff4d6d',
+                beatPhase: Math.random() * 100
+            };
+        }
+
+        function manageEnemies() {
+            const level = LEVELS[currentLevel];
+            if (enemies.length < level.enemyCount && Math.random() < 0.02 && gameActive) {
+                enemies.push(spawnEnemy());
+            }
+            for (let i = enemies.length-1; i >= 0; i--) {
+                let e = enemies[i];
+                e.x += e.vx;
+                e.y += Math.sin(frameCounter * 0.2 + e.beatPhase) * 0.3;
+                if (e.x < -50 || e.x > W+50) enemies.splice(i,1);
+            }
+        }
+
+        // === СТОЛКНОВЕНИЯ ===
+        function checkCollisions() {
+            capy.onGround = false;
+            for (let p of platforms) {
+                let capyLeft = capy.x - capy.radius;
+                let capyRight = capy.x + capy.radius;
+                let capyBottom = capy.y + capy.radius;
+                let platLeft = p.x;
+                let platRight = p.x + p.width;
+                let platTop = p.y;
+                if (capyRight > platLeft && capyLeft < platRight &&
+                    capyBottom > platTop && capy.y - capy.radius < platTop + p.height) {
+                    if (capy.vy >= 0 && capyBottom - capy.vy <= platTop + 4) {
+                        capy.y = platTop - capy.radius;
+                        capy.vy = 0;
+                        capy.onGround = true;
+                    }
+                }
+            }
+            for (let e of enemies) {
+                let dx = capy.x - e.x;
+                let dy = capy.y - e.y;
+                if (Math.sqrt(dx*dx+dy*dy) < capy.radius + e.radius) {
+                    gameActive = false;
+                    messageBox.textContent = '💔 попробуй снова';
+                }
+            }
+        }
+
+        // === ОБНОВЛЕНИЕ ===
+        function updateCapybara() {
+            capy.vy += capy.gravity;
+            capy.y += capy.vy;
+            capy.x += capy.vx;
+
+            if (capy.x - capy.radius < 0) capy.x = capy.radius;
+            if (capy.x + capy.radius > W) capy.x = W - capy.radius;
+
+            if (capy.y - capy.radius > H + 20) {
+                gameActive = false;
+                messageBox.textContent = '🕳️ упал...';
+            }
+
+            if (capy.y < H/2 - 40) {
+                addNewPlatformAbove();
+                let shift = 4;
+                platforms.forEach(p => p.y += shift);
+                enemies.forEach(e => e.y += shift);
+                capy.y += shift;
+                score += 1;
+            }
+            removeLowestPlatforms();
+        }
+
+        // === ПРЫЖОК ===
+        function jump() {
+            if (!gameActive) return;
+            if (capy.onGround) {
+                capy.vy = capy.jumpPower;
+                capy.onGround = false;
+                if (beatActive) {
+                    score += 15;
+                    messageBox.textContent = '🎯 ритм-бонус!';
+                    playTick();
+                } else {
+                    score += 5;
+                    messageBox.textContent = '⬆️ прыжок';
+                }
+                updateScore();
+            }
+        }
+
+        function updateScore() {
+            scoreSpan.innerHTML = `💫 ${score}`;
+            // проверка на переход к следующему уровню
+            if (score > 0 && score % 200 === 0 && gameActive) {
+                nextLevel();
+            }
+        }
+
+        // === РИТМ ===
+        function updateBeat() {
+            frameCounter++;
+            if (frameCounter % BEAT_INTERVAL === 0) {
+                beatActive = true;
+                setTimeout(() => { beatActive = false; }, 200);
+                platforms.forEach(p => {
+                    p.y += Math.sin(frameCounter * 0.5) * 0.5;
+                });
+            }
+        }
+
+        // === УПРАВЛЕНИЕ ===
+        function handleLeft() {
+            if (!gameActive) return;
+            capy.vx = -capy.speed;
+        }
+        function handleRight() {
+            if (!gameActive) return;
+            capy.vx = capy.speed;
+        }
+        function stopHorizontal() { capy.vx = 0; }
+
+        // === ОТРИСОВКА (оптимизированная) ===
+        function drawBackground() {
+            let gradient = ctx.createLinearGradient(0, 0, 0, H);
+            let hue = beatActive ? 280 : 200;
+            gradient.addColorStop(0, `hsla(${hue}, 80%, 10%, 1)`);
+            gradient.addColorStop(1, '#000000');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, W, H);
+        }
+
+        function drawPlatforms() {
+            for (let p of platforms) {
+                ctx.shadowColor = p.color;
+                ctx.shadowBlur = 8;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.roundRect(p.x, p.y, p.width, p.height, 6);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        function drawCapybara() {
+            let x = capy.x, y = capy.y, r = capy.radius;
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.fillStyle = '#C49A6C';
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, r, r*0.9, 0, 0, Math.PI*2);
+            ctx.fill();
+            ctx.fillStyle = '#A67B5B';
+            ctx.shadowBlur = 4;
+            ctx.beginPath();
+            ctx.ellipse(-12, -r+2, 7, 9, -0.2, 0, Math.PI*2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(12, -r+2, 7, 9, 0.2, 0, Math.PI*2);
+            ctx.fill();
+            ctx.fillStyle = '#F5E6D3';
+            ctx.beginPath();
+            ctx.ellipse(0, 2, 10, 8, 0, 0, Math.PI*2);
+            ctx.fill();
+            ctx.fillStyle = '#1E1E1E';
+            ctx.beginPath();
+            ctx.arc(-7, -4, 3.5, 0, Math.PI*2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(7, -4, 3.5, 0, Math.PI*2);
+            ctx.fill();
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(-8, -5, 1.2, 0, Math.PI*2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(6, -5, 1.2, 0, Math.PI*2);
+            ctx.fill();
+            ctx.fillStyle = '#4A3B32';
+            ctx.beginPath();
+            ctx.ellipse(0, 3, 2.5, 1.8, 0, 0, Math.PI*2);
+            ctx.fill();
+            ctx.restore();
+            ctx.shadowBlur = 0;
+        }
+
+        function drawEnemies() {
+            for (let e of enemies) {
+                ctx.save();
+                ctx.translate(e.x, e.y);
+                ctx.fillStyle = e.color;
+                ctx.shadowBlur = 8;
+                ctx.beginPath();
+                ctx.arc(0, 0, e.radius, 0, Math.PI*2);
+                ctx.fill();
+                ctx.fillStyle = 'black';
+                ctx.beginPath();
+                ctx.arc(-4, -3, 3, 0, Math.PI);
+                ctx.fill();
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(-5, -4, 1, 0, Math.PI*2);
+                ctx.fill();
+                ctx.restore();
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        // === ГЛАВНЫЙ ЦИКЛ ===
+        function gameLoop() {
+            if (!gameActive) {
+                drawBackground();
+                drawPlatforms();
+                drawEnemies();
+                drawCapybara();
+                requestAnimationFrame(gameLoop);
+                return;
+            }
+
+            updateBeat();
+            updateCapybara();
+            manageEnemies();
+            checkCollisions();
+            drawBackground();
+            drawPlatforms();
+            drawEnemies();
+            drawCapybara();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // === СОБЫТИЯ ===
+        function restartGame() {
+            currentLevel = 0;
+            loadLevel(0);
+            initAudio();
+        }
+
+        document.getElementById('leftBtn').addEventListener('pointerdown', handleLeft);
+        document.getElementById('rightBtn').addEventListener('pointerdown', handleRight);
+        document.getElementById('leftBtn').addEventListener('pointerup', stopHorizontal);
+        document.getElementById('rightBtn').addEventListener('pointerup', stopHorizontal);
+        document.getElementById('leftBtn').addEventListener('pointerleave', stopHorizontal);
+        document.getElementById('rightBtn').addEventListener('pointerleave', stopHorizontal);
+
+        canvas.addEventListener('click', (e) => { e.preventDefault(); jump(); initAudio(); });
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); jump(); initAudio(); });
+
+        messageBox.addEventListener('click', () => {
+            if (!gameActive) restartGame();
+        });
+
+        // === СТАРТ ===
+        loadLevel(0);
+        gameLoop();
+        initAudio();
+
+        // roundRect polyfill
+        CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+            if (w < 2 * r) r = w / 2;
+            if (h < 2 * r) r = h / 2;
+            this.moveTo(x + r, y);
+            this.lineTo(x + w - r, y);
+            this.quadraticCurveTo(x + w, y, x + w, y + r);
+            this.lineTo(x + w, y + h - r);
+            this.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            this.lineTo(x + r, y + h);
+            this.quadraticCurveTo(x, y + h, x, y + h - r);
+            this.lineTo(x, y + r);
+            this.quadraticCurveTo(x, y, x + r, y);
+            this.closePath();
+            return this;
+        };
+    })();
+</script>
+</body>
+</html>
